@@ -6,6 +6,7 @@ import { ProgressBar } from './components/ProgressBar';
 import { VerdictCard } from './components/VerdictCard';
 import { ResultsPanel } from './components/ResultsPanel';
 import { SafeViewModal } from './components/SafeViewModal';
+import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { securityChecks } from './data/securityChecks';
 import { generateMockResults } from './data/mockResults';
 import { generatePDFReport } from './utils/pdfGenerator';
@@ -17,6 +18,7 @@ function App() {
   const [progress, setProgress] = useState<ScanProgress | null>(null);
   const [report, setReport] = useState<SecurityReport | null>(null);
   const [showSafeView, setShowSafeView] = useState(false);
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
 
   const handleStartScan = async (url: string) => {
     setIsScanning(true);
@@ -54,6 +56,10 @@ function App() {
     setProgress(null);
     setIsScanning(false);
   };
+
+  if (showPrivacyPolicy) {
+    return <PrivacyPolicy onBack={() => setShowPrivacyPolicy(false)} />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
@@ -181,6 +187,12 @@ function App() {
                 This automated assessment provides security insights but should complement, 
                 not replace, comprehensive manual security reviews for critical applications.
               </p>
+              <button
+                onClick={() => setShowPrivacyPolicy(true)}
+                className="text-sm text-blue-600 hover:text-blue-700 underline mt-2"
+              >
+                Privacy Policy & Full Disclaimer
+              </button>
             </div>
           </div>
           <div className="border-t border-slate-200 mt-8 pt-8 text-center text-sm text-slate-500">

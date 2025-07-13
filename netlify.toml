@@ -1,0 +1,20 @@
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://shot.screenshotapi.net https://api.screenshotapi.net; frame-src 'self' https:; object-src 'none'; base-uri 'self';"
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "no-referrer-when-downgrade"
+    X-Content-Type-Options = "nosniff"
+    Permissions-Policy = "geolocation=(), camera=(), microphone=(), payment=(), usb=(), magnetometer=(), gyroscope=(), speaker=()"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+
+[[redirects]]
+  from = "/privacy-policy"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

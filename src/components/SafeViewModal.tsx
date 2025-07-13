@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, AlertTriangle, Eye, Camera, ExternalLink } from 'lucide-react';
+import axios from 'axios';
 
 interface SafeViewModalProps {
   url: string;
@@ -11,27 +12,63 @@ export const SafeViewModal: React.FC<SafeViewModalProps> = ({ url, isOpen, onClo
   const [viewMode, setViewMode] = useState<'screenshot' | 'iframe' | null>(null);
   const [screenshotUrl, setScreenshotUrl] = useState<string>('');
   const [isLoadingScreenshot, setIsLoadingScreenshot] = useState(false);
+  const [canEmbed, setCanEmbed] = useState(true);
+  const [screenshotError, setScreenshotError] = useState<string>('');
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (url && isOpen) {
+      // Check if website can be embedded in iframe
+      checkEmbedability();
+    }
+  }, [url, isOpen]);
+
+  const checkEmbedability = async () => {
+    try {
+      // Note: In production, you'd need a CORS proxy or backend endpoint
+      // This is a simplified check - in reality, you'd need server-side validation
+      const response = await fetch(url, { 
+        method: 'HEAD',
+        mode: 'no-cors' // This won't give us headers but won't fail due to CORS
+      });
+      
+      // Since we can't actually check headers due to CORS, we'll assume most sites block embedding
+      // In production, this check would be done server-side
+      setCanEmbed(false);
+    } catch (error) {
+      setCanEmbed(false);
+    }
+  };
 
   const handleScreenshotView = async () => {
     setIsLoadingScreenshot(true);
     setViewMode('screenshot');
+    setScreenshotError('');
     
-    // Simulate screenshot API call - replace with actual API
     try {
-      // Example using a screenshot service (you would replace this with actual API)
-      const encodedUrl = encodeURIComponent(url);
-      const mockScreenshotUrl = `https://api.screenshotmachine.com/?key=YOUR_API_KEY&url=${encodedUrl}&dimension=1024x768`;
+      const response = await axios.get("https://shot.screenshotapi.net/screenshot", {
+        params: {
+          token: "mfp1aMDO2fFpcOekcX5pMHRrG6CGHq2K",
+          url: url,
+          output: "image",
+          file_type: "png",
+          full_page: true,
+          width: 1024,
+          height: 768
+        },
+        timeout: 30000 // 30 second timeout
+      });
       
-      // For demo purposes, we'll use a placeholder
-      setScreenshotUrl(`https://via.placeholder.com/800x600/f8fafc/64748b?text=Screenshot+Preview+of+${encodedUrl}`);
-      
-      setTimeout(() => {
-        setIsLoadingScreenshot(false);
-      }, 2000);
+      if (response.data && response.data.screenshot) {
+        setScreenshotUrl(response.data.screenshot);
+      } else {
+        throw new Error('No screenshot URL returned');
+      }
     } catch (error) {
       console.error('Error loading screenshot:', error);
+      setScreenshotError('Failed to capture screenshot. This may be due to API limits or the website blocking screenshots.');
+      // Fallback to placeholder
+      setScreenshotUrl(`https://via.placeholder.com/800x600/f8fafc/64748b?text=Screenshot+unavailable+for+${encodeURIComponent(url)}`);
+    } finally {
       setIsLoadingScreenshot(false);
     }
   };
@@ -44,6 +81,8 @@ export const SafeViewModal: React.FC<SafeViewModalProps> = ({ url, isOpen, onClo
     window.open(url, '_blank', 'noopener,noreferrer');
     onClose();
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -78,7 +117,7 @@ export const SafeViewModal: React.FC<SafeViewModalProps> = ({ url, isOpen, onClo
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-6 max-h-[calc(90vh-200px)] overflow-y-auto">
           {!viewMode && (
             <div className="text-center space-y-6">
               <p className="text-slate-600 mb-6">
@@ -102,11 +141,15 @@ export const SafeViewModal: React.FC<SafeViewModalProps> = ({ url, isOpen, onClo
                 <button
                   onClick={handleIframeView}
                   className="p-6 border-2 border-slate-200 rounded-lg hover:border-yellow-300 hover:bg-yellow-50 transition-all group"
+                  disabled={!canEmbed}
                 >
                   <Eye className="w-8 h-8 text-yellow-600 mx-auto mb-3 group-hover:scale-110 transition-transform" />
                   <h4 className="font-semibold text-slate-800 mb-2">Sandboxed View</h4>
                   <p className="text-sm text-slate-600">
-                    View in a secure, sandboxed iframe (limited interaction)
+                    {canEmbed 
+                      ? "View in a secure, sandboxed iframe (limited interaction)"
+                      : "This website blocks iframe embedding"
+                    }
                   </p>
                 </button>
 
@@ -143,18 +186,28 @@ export const SafeViewModal: React.FC<SafeViewModalProps> = ({ url, isOpen, onClo
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
                     <p className="text-slate-600">Capturing screenshot...</p>
+                    <p className="text-xs text-slate-500 mt-2">This may take up to 30 seconds</p>
                   </div>
                 </div>
               ) : (
-                <div className="border border-slate-200 rounded-lg overflow-hidden">
-                  <img
-                    src={screenshotUrl}
-                    alt={`Screenshot of ${url}`}
-                    className="w-full h-auto max-h-96 object-contain bg-slate-50"
-                    onError={() => {
-                      setScreenshotUrl('https://via.placeholder.com/800x400/f1f5f9/64748b?text=Screenshot+unavailable');
-                    }}
-                  />
+                <div className="space-y-4">
+                  {screenshotError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                      <p className="text-sm text-red-800">{screenshotError}</p>
+                    </div>
+                  )}
+                  <div className="border border-slate-200 rounded-lg overflow-hidden">
+                    {screenshotUrl && (
+                      <img
+                        src={screenshotUrl}
+                        alt={`Screenshot of ${url}`}
+                        className="w-full h-auto max-h-96 object-contain bg-slate-50 rounded shadow-md"
+                        onError={() => {
+                          setScreenshotError('Failed to load screenshot image');
+                        }}
+                      />
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -173,22 +226,43 @@ export const SafeViewModal: React.FC<SafeViewModalProps> = ({ url, isOpen, onClo
                 </button>
               </div>
               
-              <div className="border border-slate-200 rounded-lg overflow-hidden">
-                <iframe
-                  src={url}
-                  sandbox="allow-scripts allow-same-origin allow-forms"
-                  referrerPolicy="no-referrer"
-                  className="w-full h-96"
-                  title={`Sandboxed view of ${url}`}
-                />
-              </div>
-              
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-sm text-blue-800">
-                  <strong>Security Note:</strong> This website is displayed in a sandboxed iframe with restricted permissions. 
-                  Some features may not work properly, but this provides additional security.
-                </p>
-              </div>
+              {canEmbed ? (
+                <div className="space-y-4">
+                  <div className="border border-slate-200 rounded-lg overflow-hidden">
+                    <iframe
+                      src={url}
+                      sandbox="allow-scripts allow-same-origin allow-forms"
+                      referrerPolicy="no-referrer"
+                      className="w-full h-96"
+                      style={{ border: "1px solid #ccc" }}
+                      title={`Sandboxed view of ${url}`}
+                    />
+                  </div>
+                  
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-sm text-blue-800">
+                      <strong>Security Note:</strong> This website is displayed in a sandboxed iframe with restricted permissions. 
+                      Some features may not work properly, but this provides additional security.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+                  <p className="text-red-600 font-medium mb-2">
+                    This website cannot be previewed in a secure frame
+                  </p>
+                  <p className="text-sm text-red-700">
+                    The website has security headers that prevent iframe embedding. 
+                    Please use the screenshot view instead for safe viewing.
+                  </p>
+                  <button
+                    onClick={handleScreenshotView}
+                    className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    View Screenshot Instead
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
