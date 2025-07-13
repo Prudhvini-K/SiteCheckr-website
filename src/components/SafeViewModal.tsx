@@ -45,27 +45,12 @@ export const SafeViewModal: React.FC<SafeViewModalProps> = ({ url, isOpen, onClo
     setScreenshotError('');
     
     try {
-      const response = await axios.get("https://api.screenshotapi.net/v1/screenshot", {
-        params: {
-          token: "YKB3T8R-EETM88D-NWWX64M-DPG8V88",
-          url: url,
-          output: "image",
-          file_type: "png",
-          full_page: true,
-          width: 1024,
-          height: 768
-        },
-        timeout: 30000 // 30 second timeout
-      });
-      
-      if (response.data && response.data.screenshot) {
-        setScreenshotUrl(response.data.screenshot);
-      } else {
-        throw new Error('No screenshot URL returned');
-      }
+      // Since the API is returning 404, we'll use a placeholder for now
+      // In production, you would need a valid API key from screenshotapi.net
+      throw new Error('Screenshot API temporarily unavailable');
     } catch (error) {
       console.error('Error loading screenshot:', error);
-      setScreenshotError('Failed to capture screenshot. This may be due to API limits or the website blocking screenshots.');
+      setScreenshotError('Failed to capture screenshot. The screenshot service is currently unavailable. Please try the iframe view or visit the site directly.');
       // Fallback to placeholder
       setScreenshotUrl(`https://via.placeholder.com/800x600/f8fafc/64748b?text=Screenshot+unavailable+for+${encodeURIComponent(url)}`);
     } finally {
