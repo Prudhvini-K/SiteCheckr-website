@@ -45,7 +45,7 @@ export const SafeViewModal: React.FC<SafeViewModalProps> = ({ url, isOpen, onClo
     setScreenshotError('');
     
     try {
-      const response = await axios.get("https://shot.screenshotapi.net/screenshot", {
+      const response = await axios.get("https://api.screenshotapi.net/v1/screenshot", {
         params: {
           token: "mfp1aMDO2fFpcOekcX5pMHRrG6CGHq2K",
           url: url,
