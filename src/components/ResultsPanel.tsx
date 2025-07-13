@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, CheckCircle, AlertTriangle, XCircle, Clock, AlertCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, CheckCircle, AlertTriangle, XCircle, Clock, AlertCircle, AlertOctagon } from 'lucide-react';
 import { CheckResult } from '../types';
 
 interface ResultsPanelProps {
@@ -26,21 +26,24 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results }) => {
           icon: CheckCircle,
           color: 'text-green-600',
           bgColor: 'bg-green-50',
-          borderColor: 'border-green-200'
+          borderColor: 'border-green-200',
+          badge: null
         };
       case 'warning':
         return {
           icon: AlertTriangle,
           color: 'text-yellow-600',
           bgColor: 'bg-yellow-50',
-          borderColor: 'border-yellow-200'
+          borderColor: 'border-yellow-200',
+          badge: 'WARNING'
         };
       case 'danger':
         return {
-          icon: XCircle,
+          icon: AlertOctagon,
           color: 'text-red-600',
           bgColor: 'bg-red-50',
-          borderColor: 'border-red-200'
+          borderColor: 'border-red-200',
+          badge: 'CRITICAL'
         };
       case 'pending':
         return {
@@ -54,7 +57,8 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results }) => {
           icon: AlertCircle,
           color: 'text-slate-600',
           bgColor: 'bg-slate-50',
-          borderColor: 'border-slate-200'
+          borderColor: 'border-slate-200',
+          badge: 'ERROR'
         };
     }
   };
@@ -67,20 +71,63 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results }) => {
 
   // Group results by category
   const groupedResults = results.reduce((acc, result) => {
-    // Find the category by matching the check ID with our known checks
-    const category = 'Security Checks'; // We'll use a single category for now
+    let category = 'Other Checks';
+    
+    // Categorize based on check type
+    if (['google-safe-browsing', 'virustotal', 'ip-reputation', 'mxtoolbox-reputation'].includes(result.id)) {
+      category = 'Threat Intelligence & Reputation';
+    } else if (['ssl-labs', 'csp-headers', 'dns-health'].includes(result.id)) {
+      category = 'Technical Security';
+    } else if (['content-analysis', 'content-category', 'klazify-category', 'geolocation'].includes(result.id)) {
+      category = 'Content & Behavior Analysis';
+    } else if (['whois-analysis', 'redirect-checker'].includes(result.id)) {
+      category = 'Infrastructure Analysis';
+    }
+    
     if (!acc[category]) acc[category] = [];
     acc[category].push(result);
     return acc;
   }, {} as Record<string, CheckResult[]>);
+  
+  // Sort categories by priority (threats first)
+  const categoryOrder = [
+    'Threat Intelligence & Reputation',
+    'Technical Security', 
+    'Content & Behavior Analysis',
+    'Infrastructure Analysis',
+    'Other Checks'
+  ];
+  
+  const sortedCategories = categoryOrder.filter(cat => groupedResults[cat]);
 
   return (
     <div className="space-y-6">
-      {Object.entries(groupedResults).map(([category, categoryResults]) => (
+      {sortedCategories.map(category => {
+        const categoryResults = groupedResults[category];
+        const criticalCount = categoryResults.filter(r => r.status === 'danger').length;
+        const warningCount = categoryResults.filter(r => r.status === 'warning').length;
+        
+        return (
         <div key={category} className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
           <div className="p-4 bg-slate-50 border-b border-slate-200">
-            <h3 className="text-lg font-semibold text-slate-700">{category}</h3>
-            <p className="text-sm text-slate-500">{categoryResults.length} checks completed</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-700">{category}</h3>
+                <p className="text-sm text-slate-500">{categoryResults.length} checks completed</p>
+              </div>
+              <div className="flex items-center space-x-2">
+                {criticalCount > 0 && (
+                  <span className="px-2 py-1 text-xs font-bold bg-red-200 text-red-800 rounded-full">
+                    {criticalCount} CRITICAL
+                  </span>
+                )}
+                {warningCount > 0 && (
+                  <span className="px-2 py-1 text-xs font-bold bg-yellow-200 text-yellow-800 rounded-full">
+                    {warningCount} WARNING{warningCount > 1 ? 'S' : ''}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
           
           <div className="divide-y divide-slate-200">
@@ -106,6 +153,17 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results }) => {
                     </div>
                     
                     <div className="flex items-center space-x-4">
+                      {config.badge && (
+                        <span className={`px-2 py-1 text-xs font-bold rounded-full ${
+                          config.badge === 'CRITICAL' 
+                            ? 'bg-red-200 text-red-800' 
+                            : config.badge === 'WARNING'
+                            ? 'bg-yellow-200 text-yellow-800'
+                            : 'bg-slate-200 text-slate-800'
+                        }`}>
+                          {config.badge}
+                        </span>
+                      )}
                       <div className="text-right">
                         <div className={`text-lg font-bold ${getScoreColor(result.score)}`}>
                           {result.score}/100
@@ -150,7 +208,8 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ results }) => {
             })}
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
