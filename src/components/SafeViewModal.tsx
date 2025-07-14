@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, AlertTriangle, Eye, Camera } from 'lucide-react';
-import axios from 'axios';
+import React from 'react';
+import { X, AlertTriangle, ExternalLink } from 'lucide-react';
 
 interface SafeViewModalProps {
   url: string;
@@ -9,71 +8,20 @@ interface SafeViewModalProps {
 }
 
 export const SafeViewModal: React.FC<SafeViewModalProps> = ({ url, isOpen, onClose }) => {
-  const [viewMode, setViewMode] = useState<'screenshot' | 'iframe' | null>(null);
-  const [screenshotUrl, setScreenshotUrl] = useState<string>('');
-  const [isLoadingScreenshot, setIsLoadingScreenshot] = useState(false);
-  const [canEmbed, setCanEmbed] = useState(true);
-  const [screenshotError, setScreenshotError] = useState<string>('');
-
-  useEffect(() => {
-    if (url && isOpen) {
-      // Check if website can be embedded in iframe
-      checkEmbedability();
-    }
-  }, [url, isOpen]);
-
-  const checkEmbedability = async () => {
-    try {
-      const response = await fetch(`https://cors-anywhere.herokuapp.com/${url}`, { method: "HEAD" });
-      const xFrameOptions = response.headers.get("X-Frame-Options");
-      if (xFrameOptions) {
-        setCanEmbed(false);
-      }
-    } catch (error) {
-      setCanEmbed(false);
-    }
-  };
-
-  const handleScreenshotView = async () => {
-    setIsLoadingScreenshot(true);
-    setViewMode('screenshot');
-    setScreenshotError('');
-    
-    try {
-      const screenshot = await axios.get("https://shot.screenshotapi.net/screenshot", {
-        params: {
-          token: "mfp1aMDO2fFpcOekcX5pMHRrG6CGHq2K",
-          url: url,
-          output: "image",
-          file_type: "png",
-          full_page: true
-        },
-        timeout: 30000 // 30 second timeout
-      });
-      
-      setScreenshotUrl(screenshot.data.screenshot);
-    } catch (error) {
-      console.error('Error loading screenshot:', error);
-      setScreenshotError('Screenshot preview unavailable. The screenshot service may be temporarily down.');
-    } finally {
-      setIsLoadingScreenshot(false);
-    }
-  };
-
-  const handleIframeView = () => {
-    setViewMode('iframe');
-  };
-
   if (!isOpen) return null;
+
+  const handleExternalVisit = () => {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-200">
           <div>
-            <h3 className="text-xl font-semibold text-slate-800">Safe Website Viewer</h3>
-            <p className="text-sm text-slate-600 mt-1">Viewing: {url}</p>
+            <h3 className="text-xl font-semibold text-slate-800">Website Information</h3>
+            <p className="text-sm text-slate-600 mt-1">URL: {url}</p>
           </div>
           <button
             onClick={onClose}
@@ -89,155 +37,56 @@ export const SafeViewModal: React.FC<SafeViewModalProps> = ({ url, isOpen, onClo
             <AlertTriangle className="w-5 h-5 text-yellow-400 mr-3" />
             <div>
               <p className="text-sm font-medium text-yellow-800">
-                Security Notice: View at your own risk
+                Security Notice: Exercise caution when visiting external websites
               </p>
               <p className="text-xs text-yellow-700 mt-1">
-                This website has been sandboxed and sanitized, but exercise caution when interacting with content.
+                Only visit websites that have been verified as safe through the security assessment.
               </p>
             </div>
           </div>
         </div>
 
         {/* Content */}
-        <div className="p-6 max-h-[calc(90vh-200px)] overflow-y-auto">
-          {!viewMode && (
-            <div className="text-center space-y-6">
-              <p className="text-slate-600 mb-6">
-                Choose how you'd like to safely view this website:
-              </p>
+        <div className="p-6">
+          <div className="text-center space-y-6">
+            <div className="space-y-4">
+              <h4 className="text-lg font-semibold text-slate-800">Website Access Options</h4>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Screenshot Option */}
-                <button
-                  onClick={handleScreenshotView}
-                  className="p-6 border-2 border-slate-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-all group"
-                >
-                  <Camera className="w-8 h-8 text-blue-600 mx-auto mb-3 group-hover:scale-110 transition-transform" />
-                  <h4 className="font-semibold text-slate-800 mb-2">Screenshot Preview</h4>
-                  <p className="text-sm text-slate-600">
-                    View a static screenshot of the website (safest option)
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-center space-x-3">
+                    <ExternalLink className="w-6 h-6 text-blue-600" />
+                    <span className="font-medium text-slate-800">Visit Website Externally</span>
+                  </div>
+                  
+                  <p className="text-sm text-slate-600 max-w-md mx-auto">
+                    This will open the website in a new browser tab. Only proceed if the security assessment 
+                    indicates the website is safe.
                   </p>
-                </button>
-
-                {/* Sandboxed Iframe Option */}
-                <button
-                  onClick={handleIframeView}
-                  className="p-6 border-2 border-slate-200 rounded-lg hover:border-yellow-300 hover:bg-yellow-50 transition-all group"
-                  disabled={!canEmbed}
-                >
-                  <Eye className="w-8 h-8 text-yellow-600 mx-auto mb-3 group-hover:scale-110 transition-transform" />
-                  <h4 className="font-semibold text-slate-800 mb-2">Sandboxed View</h4>
-                  <p className="text-sm text-slate-600">
-                    {canEmbed 
-                      ? "View in a secure, sandboxed iframe (limited interaction)"
-                      : "This website blocks iframe embedding"
-                    }
-                  </p>
-                </button>
+                  
+                  <button
+                    onClick={handleExternalVisit}
+                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                  >
+                    Open in New Tab
+                  </button>
+                </div>
               </div>
 
-              {/* Security Notice - Replaces Direct Visit Option */}
-              <div className="mt-6 p-4 bg-slate-50 border border-slate-200 rounded-lg">
-                <p className="text-sm text-gray-500 italic">
-                  Direct access to scanned websites is disabled for security reasons. Use screenshot or sandbox view instead.
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm text-red-800">
+                  <strong>Important:</strong> Screenshot preview and sandboxed viewing are temporarily unavailable. 
+                  Please review the security assessment results before visiting any website directly.
                 </p>
               </div>
             </div>
-          )}
 
-          {/* Screenshot View */}
-          {viewMode === 'screenshot' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-slate-800">Screenshot Preview</h4>
-                <button
-                  onClick={() => setViewMode(null)}
-                  className="text-sm text-blue-600 hover:text-blue-700"
-                >
-                  ← Back to options
-                </button>
-              </div>
-              
-              {isLoadingScreenshot ? (
-                <div className="flex items-center justify-center h-96 bg-slate-50 rounded-lg">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-slate-600">Capturing screenshot...</p>
-                    <p className="text-xs text-slate-500 mt-2">This may take up to 30 seconds</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {screenshotError && (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                      <p className="text-sm text-red-800">{screenshotError}</p>
-                    </div>
-                  )}
-                  <div className="border border-slate-200 rounded-lg overflow-hidden">
-                    {screenshotUrl ? (
-                      <img 
-                        src={screenshotUrl} 
-                        alt="Website Screenshot" 
-                        className="rounded shadow-md mt-4 w-full h-auto max-h-96 object-contain bg-slate-50" 
-                      />
-                    ) : (
-                      <div className="p-8 text-center">
-                        <p className="text-sm text-gray-500">Screenshot preview unavailable.</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+            <div className="text-xs text-slate-500 space-y-1">
+              <p>• Always verify the security assessment results before visiting</p>
+              <p>• Use caution with websites marked as "Unsafe" or "Caution"</p>
+              <p>• Report any suspicious activity to your security team</p>
             </div>
-          )}
-
-          {/* Iframe View */}
-          {viewMode === 'iframe' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-slate-800">Sandboxed Website View</h4>
-                <button
-                  onClick={() => setViewMode(null)}
-                  className="text-sm text-blue-600 hover:text-blue-700"
-                >
-                  ← Back to options
-                </button>
-              </div>
-              
-              {canEmbed ? (
-                <div className="space-y-4">
-                  <div className="border border-slate-200 rounded-lg overflow-hidden">
-                    <iframe
-                      src={url}
-                      sandbox="allow-scripts allow-same-origin"
-                      referrerPolicy="no-referrer"
-                      style={{ width: "100%", height: "600px", border: "1px solid #ccc" }}
-                      title={`Sandboxed view of ${url}`}
-                    />
-                  </div>
-                  
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <p className="text-sm text-blue-800">
-                      <strong>Security Note:</strong> This website is displayed in a sandboxed iframe with restricted permissions. 
-                      Some features may not work properly, but this provides additional security.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-                  <p className="text-red-600 mt-2">
-                    This website blocks secure embedding. Screenshot view is recommended.
-                  </p>
-                  <button
-                    onClick={handleScreenshotView}
-                    className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    View Screenshot Instead
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
