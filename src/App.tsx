@@ -6,6 +6,7 @@ import { ProgressBar } from './components/ProgressBar';
 import { VerdictCard } from './components/VerdictCard';
 import { ResultsPanel } from './components/ResultsPanel';
 import { SafeViewModal } from './components/SafeViewModal';
+import { ScreenshotPreview } from './components/ScreenshotPreview';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { securityChecks } from './data/securityChecks';
 import { generateMockResults } from './data/mockResults';
@@ -149,6 +150,9 @@ function App() {
 
             {/* Detailed Results */}
             <ResultsPanel results={report.checks} />
+
+            {/* Website Screenshot */}
+            <ScreenshotPreview url={report.url} />
           </div>
         )}
 
