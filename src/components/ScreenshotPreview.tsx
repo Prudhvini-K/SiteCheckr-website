@@ -18,8 +18,8 @@ export const ScreenshotPreview: React.FC<ScreenshotPreviewProps> = ({ url, class
       setScreenshotUrl(null);
 
       try {
-        // Using a more reliable screenshot service with proper error handling
-        const apiUrl = `https://api.screenshotmachine.com/?key=demo&url=${encodeURIComponent(url)}&dimension=1024x768&format=png&cacheLimit=0`;
+        // Using the provided working Screenshot API
+        const apiUrl = `https://shot.screenshotapi.net/screenshot?token=2P7KYQ9-R89M2VR-P2WRHCP-W1B9YQT&url=${encodeURIComponent(url)}&width=1280&height=720&output=image&file_type=png&wait_for_event=load`;
         
         // Test if the image loads successfully
         const img = new Image();
@@ -31,35 +31,22 @@ export const ScreenshotPreview: React.FC<ScreenshotPreviewProps> = ({ url, class
         };
         
         img.onerror = () => {
-          // Fallback to a different service
-          const fallbackUrl = `https://mini.s-shot.ru/1024x768/PNG/1024/Z100/?${encodeURIComponent(url)}`;
-          const fallbackImg = new Image();
-          
-          fallbackImg.onload = () => {
-            setScreenshotUrl(fallbackUrl);
-            setLoading(false);
-          };
-          
-          fallbackImg.onerror = () => {
-            setError('Screenshot service temporarily unavailable');
-            setLoading(false);
-          };
-          
-          fallbackImg.src = fallbackUrl;
+          setError('Unable to load screenshot. Try again later.');
+          setLoading(false);
         };
         
         img.src = apiUrl;
         
-        // Timeout after 15 seconds
+        // Timeout after 30 seconds
         setTimeout(() => {
           if (loading) {
-            setError('Screenshot capture timed out');
+            setError('Screenshot capture timed out. Try again later.');
             setLoading(false);
           }
-        }, 15000);
+        }, 30000);
         
       } catch (err) {
-        setError('Failed to capture screenshot');
+        setError('Unable to load screenshot. Try again later.');
         setLoading(false);
       }
     };
@@ -67,20 +54,20 @@ export const ScreenshotPreview: React.FC<ScreenshotPreviewProps> = ({ url, class
     if (url) {
       captureScreenshot();
     }
-  }, [url]);
+  }, [url, loading]);
 
   return (
     <div className={`bg-white rounded-lg border border-slate-200 overflow-hidden ${className}`}>
-      <div className="flex items-center space-x-2 p-3 bg-slate-50 border-b border-slate-200">
-        <Camera className="w-4 h-4 text-slate-600" />
-        <span className="text-sm font-medium text-slate-700">Website Screenshot</span>
+      <div className="flex items-center space-x-2 p-4 bg-slate-50 border-b border-slate-200">
+        <Camera className="w-5 h-5 text-slate-600" />
+        <h3 className="text-lg font-semibold text-slate-700">Website Screenshot</h3>
       </div>
       
-      <div className="p-4">
+      <div className="p-6">
         {loading && (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
-              <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-2" />
+              <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-3" />
               <p className="text-sm text-slate-600">Capturing screenshot...</p>
             </div>
           </div>
@@ -89,21 +76,20 @@ export const ScreenshotPreview: React.FC<ScreenshotPreviewProps> = ({ url, class
         {error && (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
-              <AlertCircle className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-              <p className="text-sm text-slate-600 mb-1">Screenshot Preview Unavailable</p>
-              <p className="text-xs text-slate-500">{error}</p>
+              <AlertCircle className="w-8 h-8 text-slate-400 mx-auto mb-3" />
+              <p className="text-sm text-slate-600">{error}</p>
             </div>
           </div>
         )}
         
         {screenshotUrl && !loading && !error && (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <img
               src={screenshotUrl}
               alt={`Screenshot of ${url}`}
               className="w-full h-auto rounded-lg shadow-sm border border-slate-200 max-h-96 object-cover"
               onError={() => {
-                setError('Failed to load screenshot image');
+                setError('Unable to load screenshot. Try again later.');
                 setScreenshotUrl(null);
               }}
             />
