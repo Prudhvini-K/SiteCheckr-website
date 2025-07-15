@@ -7,13 +7,31 @@ const SCORING_WEIGHTS = {
   LOW_PRIORITY: ['content-analysis', 'redirect-checker', 'geolocation', 'content-category', 'klazify-category']
 };
 
-// Known malicious domains for testing
+// Known malicious domains for testing (expanded list)
 const KNOWN_MALICIOUS_DOMAINS = [
   '17ebook.com',
   'clixtrck.com',
   'abc123.info',
   'malware-test.com',
-  'phishing-example.net'
+  'phishing-example.net',
+  'badsite.evil',
+  'virus-download.com',
+  'fake-bank.net',
+  'scam-site.org'
+];
+
+// Known safe domains for testing
+const KNOWN_SAFE_DOMAINS = [
+  'microsoft.com',
+  'bbc.com',
+  'google.com',
+  'github.com',
+  'stackoverflow.com',
+  'wikipedia.org',
+  'amazon.com',
+  'apple.com',
+  'cloudflare.com',
+  'mozilla.org'
 ];
 
 // Enhanced threat detection patterns
@@ -24,33 +42,43 @@ const THREAT_INDICATORS = {
   LOW: ['redirect', 'category mismatch', 'geo restriction']
 };
 
+// Content categories with confidence scoring
+const CONTENT_CATEGORIES = {
+  SAFE: ['Business/Technology', 'News/Media', 'Education', 'Government', 'Healthcare', 'Finance'],
+  CAUTION: ['Social Media', 'Entertainment', 'Shopping', 'Travel', 'Sports'],
+  RISKY: ['Adult Content', 'Gambling', 'File Sharing', 'Proxy/VPN', 'Uncategorized']
+};
+
 export const generateMockResults = (url: string, enabledChecks: string[]): SecurityReport => {
-  const domain = url.replace(/https?:\/\//, '').split('/')[0].toLowerCase();
+  const domain = extractDomain(url);
   const isMalicious = KNOWN_MALICIOUS_DOMAINS.some(maliciousDomain => 
     domain.includes(maliciousDomain) || maliciousDomain.includes(domain)
+  );
+  const isSafe = KNOWN_SAFE_DOMAINS.some(safeDomain => 
+    domain.includes(safeDomain) || safeDomain.includes(domain)
   );
 
   // Generate realistic results based on domain characteristics
   const mockResults: Record<string, CheckResult> = {
-    'google-safe-browsing': generateSafeBrowsingResult(domain, isMalicious),
-    'virustotal': generateVirusTotalResult(domain, isMalicious),
-    'mxtoolbox-reputation': generateReputationResult(domain, isMalicious),
-    'whois-analysis': generateWhoisResult(domain, isMalicious),
-    'ssl-labs': generateSSLResult(domain, isMalicious),
-    'redirect-checker': generateRedirectResult(domain, isMalicious),
-    'dns-health': generateDNSResult(domain, isMalicious),
-    'content-analysis': generateContentResult(domain, isMalicious),
-    'geolocation': generateGeolocationResult(domain, isMalicious),
-    'content-category': generateCategoryResult(domain, isMalicious),
-    'ip-reputation': generateIPReputationResult(domain, isMalicious),
-    'csp-headers': generateHeadersResult(domain, isMalicious),
-    'klazify-category': generateKlazifyResult(domain, isMalicious)
+    'google-safe-browsing': generateSafeBrowsingResult(domain, isMalicious, isSafe),
+    'virustotal': generateVirusTotalResult(domain, isMalicious, isSafe),
+    'mxtoolbox-reputation': generateReputationResult(domain, isMalicious, isSafe),
+    'whois-analysis': generateWhoisResult(domain, isMalicious, isSafe),
+    'ssl-labs': generateSSLResult(domain, isMalicious, isSafe),
+    'redirect-checker': generateRedirectResult(domain, isMalicious, isSafe),
+    'dns-health': generateDNSResult(domain, isMalicious, isSafe),
+    'content-analysis': generateContentResult(domain, isMalicious, isSafe),
+    'geolocation': generateGeolocationResult(domain, isMalicious, isSafe),
+    'content-category': generateCategoryResult(domain, isMalicious, isSafe),
+    'ip-reputation': generateIPReputationResult(domain, isMalicious, isSafe),
+    'csp-headers': generateHeadersResult(domain, isMalicious, isSafe),
+    'klazify-category': generateKlazifyResult(domain, isMalicious, isSafe)
   };
 
   const checks = enabledChecks.map(id => mockResults[id]).filter(Boolean);
   
   // Enhanced AI verdict calculation
-  const aiVerdict = calculateEnhancedVerdict(checks, domain, isMalicious);
+  const aiVerdict = calculateEnhancedVerdict(checks, domain, isMalicious, isSafe);
 
   return {
     url,
@@ -60,7 +88,16 @@ export const generateMockResults = (url: string, enabledChecks: string[]): Secur
   };
 };
 
-function generateSafeBrowsingResult(domain: string, isMalicious: boolean): CheckResult {
+function extractDomain(url: string): string {
+  try {
+    const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`);
+    return urlObj.hostname.replace(/^www\./, '').toLowerCase();
+  } catch {
+    return url.replace(/https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
+  }
+}
+
+function generateSafeBrowsingResult(domain: string, isMalicious: boolean, isSafe: boolean): CheckResult {
   if (isMalicious) {
     return {
       id: 'google-safe-browsing',
@@ -78,17 +115,28 @@ function generateSafeBrowsingResult(domain: string, isMalicious: boolean): Check
     };
   }
 
+  if (isSafe) {
+    return {
+      id: 'google-safe-browsing',
+      name: 'Google Safe Browsing',
+      status: 'safe',
+      score: 100,
+      details: 'Excellent reputation - trusted domain with clean history',
+      findings: ['Verified safe domain', 'No malware detected', 'No phishing reports', 'Trusted by Google']
+    };
+  }
+
   return {
     id: 'google-safe-browsing',
     name: 'Google Safe Browsing',
     status: 'safe',
-    score: 100,
+    score: 95,
     details: 'No threats detected in Google Safe Browsing database',
     findings: ['Clean reputation', 'No malware detected', 'No phishing reports', 'Safe for browsing']
   };
 }
 
-function generateVirusTotalResult(domain: string, isMalicious: boolean): CheckResult {
+function generateVirusTotalResult(domain: string, isMalicious: boolean, isSafe: boolean): CheckResult {
   if (isMalicious) {
     const detectionCount = Math.floor(Math.random() * 15) + 10; // 10-25 detections
     return {
@@ -107,7 +155,18 @@ function generateVirusTotalResult(domain: string, isMalicious: boolean): CheckRe
     };
   }
 
-  // Simulate occasional false positives for legitimate sites
+  if (isSafe) {
+    return {
+      id: 'virustotal',
+      name: 'VirusTotal Analysis',
+      status: 'safe',
+      score: 100,
+      details: '70/70 security vendors rated this site as clean - excellent reputation',
+      findings: ['Clean by all antivirus engines', 'Trusted domain with long history', 'No suspicious behavior detected', 'Excellent reputation score']
+    };
+  }
+
+  // Simulate occasional false positives for unknown sites
   const falsePositives = Math.random() < 0.1 ? Math.floor(Math.random() * 3) + 1 : 0;
   const score = falsePositives > 0 ? 95 - (falsePositives * 5) : 98;
   
@@ -121,11 +180,143 @@ function generateVirusTotalResult(domain: string, isMalicious: boolean): CheckRe
       : '70/70 security vendors rated this site as clean',
     findings: falsePositives > 0 
       ? ['Clean by major antivirus engines', `${falsePositives} false positives from minor vendors`, 'No confirmed threats']
-      : ['Clean by all antivirus engines', 'No suspicious behavior detected', 'Excellent reputation']
+      : ['Clean by all antivirus engines', 'No suspicious behavior detected', 'Good reputation']
   };
 }
 
-function generateReputationResult(domain: string, isMalicious: boolean): CheckResult {
+function generateCategoryResult(domain: string, isMalicious: boolean, isSafe: boolean): CheckResult {
+  let category: string;
+  let confidence = 85;
+  let status: 'safe' | 'warning' | 'danger' = 'safe';
+
+  if (isMalicious) {
+    category = 'Malware/Phishing';
+    confidence = 95;
+    status = 'danger';
+  } else if (isSafe) {
+    // Assign appropriate categories for known safe domains
+    if (domain.includes('microsoft') || domain.includes('github')) {
+      category = 'Business/Technology';
+      confidence = 98;
+    } else if (domain.includes('bbc') || domain.includes('news')) {
+      category = 'News/Media';
+      confidence = 96;
+    } else if (domain.includes('google') || domain.includes('wikipedia')) {
+      category = 'Education';
+      confidence = 97;
+    } else {
+      category = 'Business/Technology';
+      confidence = 92;
+    }
+  } else {
+    // For unknown domains, vary the category more realistically
+    const randomCategory = Math.random();
+    if (randomCategory < 0.4) {
+      category = 'Business/Technology';
+      confidence = 75;
+    } else if (randomCategory < 0.6) {
+      category = 'Uncategorized';
+      confidence = 45;
+      status = 'warning';
+    } else if (randomCategory < 0.8) {
+      category = 'Social Media';
+      confidence = 70;
+      status = 'warning';
+    } else {
+      category = 'Entertainment';
+      confidence = 65;
+    }
+  }
+
+  // Validation logic - reduce confidence if category doesn't match expected domain
+  if (category === 'Business/Technology' && !domain.includes('tech') && !domain.includes('software') && !isSafe) {
+    confidence -= 20;
+    if (confidence < 60) {
+      status = 'warning';
+    }
+  }
+
+  const score = Math.max(20, confidence);
+
+  return {
+    id: 'content-category',
+    name: 'Content Category Classification',
+    status,
+    score,
+    details: `Website categorized as ${category} (${confidence}% confidence)`,
+    findings: [
+      `Category: ${category}`,
+      `Confidence: ${confidence}%`,
+      status === 'warning' ? 'Category classification uncertain' : 'Category classification reliable',
+      status === 'danger' ? 'High-risk category detected' : 'Category appears appropriate'
+    ],
+    recommendations: status === 'danger' 
+      ? ['Block category entirely', 'Add to content filter', 'User access restrictions']
+      : status === 'warning'
+      ? ['Verify category accuracy', 'Consider additional review', 'Monitor for changes']
+      : undefined
+  };
+}
+
+function generateKlazifyResult(domain: string, isMalicious: boolean, isSafe: boolean): CheckResult {
+  let category: string;
+  let language = 'English';
+  let confidence = 88;
+  let status: 'safe' | 'warning' | 'danger' = 'safe';
+
+  if (isMalicious) {
+    category = 'Malicious/Suspicious';
+    language = 'Multiple (suspicious)';
+    confidence = 94;
+    status = 'danger';
+  } else if (isSafe) {
+    if (domain.includes('microsoft') || domain.includes('github')) {
+      category = 'Technology/Software';
+      confidence = 96;
+    } else if (domain.includes('bbc')) {
+      category = 'News/Media';
+      confidence = 98;
+    } else {
+      category = 'Business/Professional';
+      confidence = 90;
+    }
+  } else {
+    // More realistic categorization for unknown domains
+    const categories = ['Technology/Software', 'Business/Professional', 'Uncategorized', 'Social Media'];
+    category = categories[Math.floor(Math.random() * categories.length)];
+    
+    if (category === 'Uncategorized') {
+      confidence = 40;
+      status = 'warning';
+    } else {
+      confidence = 70 + Math.floor(Math.random() * 20);
+    }
+  }
+
+  const score = Math.max(15, confidence);
+
+  return {
+    id: 'klazify-category',
+    name: 'Content Categorization',
+    status,
+    score,
+    details: `Content analysis shows ${status === 'danger' ? 'high-risk' : status === 'warning' ? 'uncertain' : 'legitimate'} website characteristics`,
+    findings: [
+      `Category: ${category}`,
+      `Language: ${language}`,
+      status === 'danger' ? 'Suspicious keywords detected' : 'No suspicious keywords',
+      status === 'danger' ? 'Fraudulent content patterns' : 'Professional content structure'
+    ],
+    recommendations: status === 'danger' 
+      ? ['Block access immediately', 'Add to security filters', 'Report to threat intelligence']
+      : status === 'warning'
+      ? ['Verify content accuracy', 'Additional manual review recommended']
+      : undefined
+  };
+}
+
+// Update other functions with similar improvements...
+function generateReputationResult(domain: string, isMalicious: boolean, isSafe: boolean): CheckResult {
   if (isMalicious) {
     return {
       id: 'mxtoolbox-reputation',
@@ -143,6 +334,17 @@ function generateReputationResult(domain: string, isMalicious: boolean): CheckRe
     };
   }
 
+  if (isSafe) {
+    return {
+      id: 'mxtoolbox-reputation',
+      name: 'MXToolBox Reputation',
+      status: 'safe',
+      score: 100,
+      details: 'Excellent domain and IP reputation - trusted source',
+      findings: ['Not listed in any blacklists', 'Excellent sending reputation', 'Clean DNS records', 'No abuse reports', 'Trusted domain history']
+    };
+  }
+
   return {
     id: 'mxtoolbox-reputation',
     name: 'MXToolBox Reputation',
@@ -153,7 +355,7 @@ function generateReputationResult(domain: string, isMalicious: boolean): CheckRe
   };
 }
 
-function generateWhoisResult(domain: string, isMalicious: boolean): CheckResult {
+function generateWhoisResult(domain: string, isMalicious: boolean, isSafe: boolean): CheckResult {
   if (isMalicious) {
     return {
       id: 'whois-analysis',
@@ -171,6 +373,17 @@ function generateWhoisResult(domain: string, isMalicious: boolean): CheckResult 
     };
   }
 
+  if (isSafe) {
+    return {
+      id: 'whois-analysis',
+      name: 'WHOIS Analysis',
+      status: 'safe',
+      score: 98,
+      details: 'Excellent domain registration history - established and trusted',
+      findings: ['Registered for 10+ years', 'Complete registration info', 'Reputable registrar', 'Stable ownership', 'Corporate registration']
+    };
+  }
+
   return {
     id: 'whois-analysis',
     name: 'WHOIS Analysis',
@@ -181,7 +394,7 @@ function generateWhoisResult(domain: string, isMalicious: boolean): CheckResult 
   };
 }
 
-function generateSSLResult(domain: string, isMalicious: boolean): CheckResult {
+function generateSSLResult(domain: string, isMalicious: boolean, isSafe: boolean): CheckResult {
   if (isMalicious) {
     return {
       id: 'ssl-labs',
@@ -196,6 +409,17 @@ function generateSSLResult(domain: string, isMalicious: boolean): CheckResult {
         'Potential man-in-the-middle risk'
       ],
       recommendations: ['Do not trust SSL connection', 'Block HTTPS traffic', 'Investigate certificate source']
+    };
+  }
+
+  if (isSafe) {
+    return {
+      id: 'ssl-labs',
+      name: 'SSL Labs Analysis',
+      status: 'safe',
+      score: 100,
+      details: 'Excellent SSL/TLS configuration - A+ rating',
+      findings: ['Valid EV certificate', 'Strong encryption protocols', 'Proper security headers', 'A+ rating', 'Perfect forward secrecy']
     };
   }
 
@@ -215,7 +439,7 @@ function generateSSLResult(domain: string, isMalicious: boolean): CheckResult {
   };
 }
 
-function generateRedirectResult(domain: string, isMalicious: boolean): CheckResult {
+function generateRedirectResult(domain: string, isMalicious: boolean, isSafe: boolean): CheckResult {
   if (isMalicious) {
     return {
       id: 'redirect-checker',
@@ -237,13 +461,13 @@ function generateRedirectResult(domain: string, isMalicious: boolean): CheckResu
     id: 'redirect-checker',
     name: 'Redirect Chain Analysis',
     status: 'safe',
-    score: 100,
+    score: isSafe ? 100 : 98,
     details: 'Clean redirect chain detected',
     findings: ['Direct connection to target', 'No suspicious redirects', 'HTTPS properly enforced']
   };
 }
 
-function generateDNSResult(domain: string, isMalicious: boolean): CheckResult {
+function generateDNSResult(domain: string, isMalicious: boolean, isSafe: boolean): CheckResult {
   if (isMalicious) {
     return {
       id: 'dns-health',
@@ -265,13 +489,13 @@ function generateDNSResult(domain: string, isMalicious: boolean): CheckResult {
     id: 'dns-health',
     name: 'DNS Health Check',
     status: 'safe',
-    score: 88,
+    score: isSafe ? 95 : 88,
     details: 'DNS configuration is healthy',
     findings: ['All DNS servers responding', 'Proper SOA record', 'Stable configuration', 'Good TTL values']
   };
 }
 
-function generateContentResult(domain: string, isMalicious: boolean): CheckResult {
+function generateContentResult(domain: string, isMalicious: boolean, isSafe: boolean): CheckResult {
   if (isMalicious) {
     return {
       id: 'content-analysis',
@@ -293,13 +517,13 @@ function generateContentResult(domain: string, isMalicious: boolean): CheckResul
     id: 'content-analysis',
     name: 'Content Risk Assessment',
     status: 'safe',
-    score: 94,
+    score: isSafe ? 98 : 94,
     details: 'Content appears safe for enterprise use',
     findings: ['Business/technology category', 'No adult content detected', 'Professional language used', 'Legitimate business content']
   };
 }
 
-function generateGeolocationResult(domain: string, isMalicious: boolean): CheckResult {
+function generateGeolocationResult(domain: string, isMalicious: boolean, isSafe: boolean): CheckResult {
   if (isMalicious) {
     return {
       id: 'geolocation',
@@ -317,6 +541,17 @@ function generateGeolocationResult(domain: string, isMalicious: boolean): CheckR
     };
   }
 
+  if (isSafe) {
+    return {
+      id: 'geolocation',
+      name: 'IP Geolocation Check',
+      status: 'safe',
+      score: 100,
+      details: 'Hosted in trusted jurisdiction with reputable provider',
+      findings: ['US-based hosting (Seattle, Washington)', 'Reputable data center (Microsoft Azure)', 'No geo-restrictions detected', 'ISP: Microsoft Corporation']
+    };
+  }
+
   return {
     id: 'geolocation',
     name: 'IP Geolocation Check',
@@ -327,35 +562,7 @@ function generateGeolocationResult(domain: string, isMalicious: boolean): CheckR
   };
 }
 
-function generateCategoryResult(domain: string, isMalicious: boolean): CheckResult {
-  if (isMalicious) {
-    return {
-      id: 'content-category',
-      name: 'Content Category Classification',
-      status: 'danger',
-      score: 25,
-      details: 'Website categorized as high-risk content',
-      findings: [
-        'Category: Malware/Phishing',
-        'Adult/illegal content detected',
-        'Gambling/fraud indicators',
-        'High-risk category classification'
-      ],
-      recommendations: ['Block category entirely', 'Add to content filter', 'User access restrictions']
-    };
-  }
-
-  return {
-    id: 'content-category',
-    name: 'Content Category Classification',
-    status: 'safe',
-    score: 94,
-    details: 'Website categorized as business/technology content',
-    findings: ['Category: Business/Technology', 'No adult content detected', 'Professional language used', 'Corporate website structure']
-  };
-}
-
-function generateIPReputationResult(domain: string, isMalicious: boolean): CheckResult {
+function generateIPReputationResult(domain: string, isMalicious: boolean, isSafe: boolean): CheckResult {
   if (isMalicious) {
     return {
       id: 'ip-reputation',
@@ -377,13 +584,13 @@ function generateIPReputationResult(domain: string, isMalicious: boolean): Check
     id: 'ip-reputation',
     name: 'IP Reputation Analysis',
     status: 'safe',
-    score: 98,
+    score: isSafe ? 100 : 98,
     details: 'IP address has excellent reputation',
     findings: ['No blacklist entries found', 'Clean reputation across all databases', 'No spam reports', 'Legitimate hosting provider']
   };
 }
 
-function generateHeadersResult(domain: string, isMalicious: boolean): CheckResult {
+function generateHeadersResult(domain: string, isMalicious: boolean, isSafe: boolean): CheckResult {
   if (isMalicious) {
     return {
       id: 'csp-headers',
@@ -398,6 +605,17 @@ function generateHeadersResult(domain: string, isMalicious: boolean): CheckResul
         'No XSS protection headers'
       ],
       recommendations: ['Implement comprehensive CSP', 'Add security headers', 'Review script policies']
+    };
+  }
+
+  if (isSafe) {
+    return {
+      id: 'csp-headers',
+      name: 'Security Headers Analysis',
+      status: 'safe',
+      score: 95,
+      details: 'Excellent security header implementation',
+      findings: ['Strong CSP policy', 'Proper security headers', 'Good anti-clickjacking protection', 'HSTS enabled']
     };
   }
 
@@ -417,42 +635,14 @@ function generateHeadersResult(domain: string, isMalicious: boolean): CheckResul
   };
 }
 
-function generateKlazifyResult(domain: string, isMalicious: boolean): CheckResult {
-  if (isMalicious) {
-    return {
-      id: 'klazify-category',
-      name: 'Content Categorization',
-      status: 'danger',
-      score: 20,
-      details: 'Content analysis shows high-risk website characteristics',
-      findings: [
-        'Category: Malicious/Suspicious',
-        'Language: Multiple (suspicious)',
-        'Suspicious keywords detected',
-        'Fraudulent content patterns'
-      ],
-      recommendations: ['Block access immediately', 'Add to security filters', 'Report to threat intelligence']
-    };
-  }
-
-  return {
-    id: 'klazify-category',
-    name: 'Content Categorization',
-    status: 'safe',
-    score: 92,
-    details: 'Content analysis shows legitimate business website',
-    findings: ['Category: Technology/Software', 'Language: English', 'No suspicious keywords', 'Professional content structure']
-  };
-}
-
-function calculateEnhancedVerdict(checks: CheckResult[], domain: string, isMalicious: boolean): {
+function calculateEnhancedVerdict(checks: CheckResult[], domain: string, isMalicious: boolean, isSafe: boolean): {
   status: 'safe' | 'caution' | 'unsafe';
   confidence: number;
   summary: string;
   recommendations: string[];
 } {
   // Start with base confidence
-  let confidence = 85;
+  let confidence = isSafe ? 95 : isMalicious ? 15 : 85;
   let criticalThreats = 0;
   let warnings = 0;
   let totalScore = 0;
@@ -503,7 +693,7 @@ function calculateEnhancedVerdict(checks: CheckResult[], domain: string, isMalic
   let recommendations: string[];
 
   // Critical threat override - any critical threat = unsafe
-  if (criticalThreats > 0 || avgWeightedScore < 50) {
+  if (criticalThreats > 0 || avgWeightedScore < 50 || isMalicious) {
     status = 'unsafe';
     confidence = Math.min(confidence, 30); // Cap confidence for unsafe sites
     summary = `SECURITY ALERT: This website poses significant security risks and should NOT be whitelisted. ${criticalThreats} critical threat(s) detected across security checks.`;
@@ -532,8 +722,10 @@ function calculateEnhancedVerdict(checks: CheckResult[], domain: string, isMalic
   // All checks pass or minor issues only = safe
   else {
     status = 'safe';
-    confidence = Math.max(confidence, 75); // Ensure minimum confidence for safe sites
-    summary = `This website appears safe for enterprise whitelisting with standard security controls. All critical security checks passed with ${warnings === 0 ? 'no' : 'minor'} issues identified.`;
+    confidence = Math.max(confidence, isSafe ? 90 : 75); // Higher confidence for known safe sites
+    summary = isSafe 
+      ? `This website is a trusted, well-known domain that is safe for enterprise whitelisting. All security checks passed with excellent ratings.`
+      : `This website appears safe for enterprise whitelisting with standard security controls. All critical security checks passed with ${warnings === 0 ? 'no' : 'minor'} issues identified.`;
     recommendations = [
       'Proceed with standard whitelisting process',
       'Implement periodic re-scanning (quarterly)',
